@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.5.10"
     application
+    antlr
 }
 
 group = "me.lxm"
@@ -13,6 +14,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.antlr:antlr4:4.11.1")
     testImplementation(kotlin("test"))
 }
 
