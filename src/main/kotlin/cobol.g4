@@ -25,9 +25,9 @@ SUBTRACT: 'SUBTRACT';
 
 KeyWords: ACCEPT|ADD|ALTER|CALL|COPY|DATA_DIVISION|DISPLAY|DIVIDE|DIVISION|EVALUATE|
 GO_TO|IDENTIFICATION_DIVISION|IF|LOOP|MOVE|MULTIPLY|NEXT_SENTENCE|SIGNAL|STOP|SUBTRACT;
-Identifiers: ([a-z0-9\-])+;
+
 // A valid COBOL word cannot start or end with a dash or underscore and must have at least one letter
-COBOL_WORD: (DIGIT (DIGIT | [-_])*)? LETTER ([-_]? ALPHANUMERIC)*;
+COBOL_WORD: (DIGIT (DIGIT | [-_])*)? LETTER ([-_]* ALPHANUMERIC)*;
 
 // A non-numeric literal can be delimited by a pair of apostrophes or quotes. Doubling a quote or apostrophe can escape it,
 // and a non-numeric literal must have at least one character inside.
@@ -50,3 +50,4 @@ SIGN: [+-];
 DIGIT: [0-9];
 LOWERCASE: [a-z];
 UPPERCASE: [A-Z];
+
