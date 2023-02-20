@@ -1,9 +1,16 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.5.10"
+    kotlin("jvm") version "1.7.21"
     application
     antlr
+}
+
+configure<SourceSetContainer> {
+    named("main") {
+        java.srcDir("src/main/gen")
+        kotlin.srcDir("src/main/kotlin")
+    }
 }
 
 group = "me.lxm"
@@ -23,7 +30,12 @@ tasks.test {
 }
 
 tasks.withType<KotlinCompile> {
+    dependsOn(tasks.generateGrammarSource)
     kotlinOptions.jvmTarget = "1.8"
+}
+
+tasks.generateGrammarSource {
+    outputDirectory = File("src/main/gen")
 }
 
 application {
