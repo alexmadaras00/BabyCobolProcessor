@@ -1,4 +1,27 @@
+import interpret.Interpreter
+import org.antlr.v4.runtime.CommonTokenStream
+import parse.CobolLexer
+import parse.CobolParser
+import parse.readFile
 import java.util.*
+
+/**
+ * Reads a file, parses and interprets it, and then runs the program.
+ * @param fileName name of the file to be interpreted
+ */
+fun interpretAndRun(fileName: String) {
+    // IO and preprocessing
+    val code = readFile(fileName)
+    // ANTLR doing its thing
+    val lexer = CobolLexer(code)
+    val tokens = CommonTokenStream(lexer)
+    val parser = CobolParser(tokens)
+    val tree = parser.program()
+    // Making the program
+    val program = Interpreter().interpret(tree)
+    // And running it
+    program.run()
+}
 
 fun main(args: Array<String>) {
     println("Hello World!")
