@@ -33,21 +33,23 @@ proc_div: PROCEDURE_DIVISION DOT
 
 statement: DISPLAY (atomic /*(DELIMITED_BY (SPACE | SIZE | NONNUMERIC | NUMERIC))?*/)+ WITH_NO_ADVANCING? #displayStat
          | ACCEPT COBOL_WORD+                                                                             #acceptStat
-         | ADD (atomic)+ TO (atomic)+ (GIVING COBOL_WORD)? (ROUNDED)?                                     #addStat
+         | ADD (atomic)+ TO (atomic)+ (GIVING COBOL_WORD)*                                                #addStat
          | DIVIDE atomic INTO COBOL_WORD (GIVING COBOL_WORD)? (REMINDER COBOL_WORD)?/*TODO finish*/ #divideStat
          | EVALUATE  /* this one looks absolutely horrendous TODO finish? */                              #evaluateStat
          | IF boolean_expression THEN statement+ (ELSE statement+) END                                    #ifStat
          | MOVE (atomic /*| HIGH_VALUES | LOW_VALUES | SPACES*/) TO (COBOL_WORD)+                         #moveStat
          | MULTIPLY atomic BY atomic+ (GIVING COBOL_WORD)?                                                #multiplyStat
-         | PERFORM /*TODO finish*/                                                                        #performStat
-         | stop_statement                                                                                 #stopStat
-         | SUBTRACT /*TODO finish*/                                                                       #subtractStat
+         | PERFORM procedure_name (THROUGH procedure_name)? (atomic TIMES)?                               #performStat
+         | STOP STOP                                                                                      #stopStat
+         | SUBTRACT (atomic)+ FROM (atomic)+ (GIVING COBOL_WORD)*                                         #subtractStat
          ;
 
 stop_statement: STOP;
 
 // Anything smaller than a statement
 boolean_expression: ;
+
+procedure_name: ;
 
 atomic: NUMERIC    #numeric
       | NONNUMERIC #nonnumeric
@@ -71,6 +73,7 @@ DIVISION:'DIVISION';
 ELSE: 'ELSE';
 END: 'END';
 EVALUATE:'EVALUATE';
+FROM:'FROM';
 GIVING:'GIVING';
 GO_TO:'GO TO';
 IDENTIFICATION_DIVISION: 'IDENTIFICATION DIVISION';
@@ -93,7 +96,9 @@ SPACE: 'SPACE';
 STOP: 'STOP';
 SUBTRACT: 'SUBTRACT';
 THEN: 'THEN';
+TIMES: 'TIMES';
 TO: 'TO';
+THROUGH: 'THROUGH';
 WITH_NO_ADVANCING: 'WITH NO ADVANCING';
 WORKING_STORAGE_SECTION: 'WORKING-STORAGE SECTION';
 
