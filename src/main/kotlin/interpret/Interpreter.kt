@@ -1,4 +1,5 @@
 package interpret
+
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.ParseTree
@@ -11,7 +12,7 @@ import parse.CobolParser.NumericContext
 import parse.CompileException
 
 
-class Interpreter(): CobolBaseListener() {
+class Interpreter() : CobolBaseListener() {
     val symbolTable = emptyMap<String, Value?>().toMutableMap()
     val instructions = emptyList<(State) -> State>().toMutableList()
     val errors = emptyList<String>().toMutableList()
@@ -53,17 +54,29 @@ class Interpreter(): CobolBaseListener() {
 
     override fun exitDisplayStat(ctx: CobolParser.DisplayStatContext) {
         if (ctx.WITH_NO_ADVANCING() != null) {
-            instructions.add { state -> state.also { ctx.atomic()?.forEach { when (it) {
-                is NumericContext -> print(it.NUMERIC().text)
-                is NonnumericContext -> print(it.NONNUMERIC().text)
-                is IdentifierContext -> print(state.variables[it.COBOL_WORD().text]!!.getString())
-            }  } } }
+            instructions.add { state ->
+                state.also {
+                    ctx.atomic()?.forEach {
+                        when (it) {
+                            is NumericContext -> print(it.NUMERIC().text)
+                            is NonnumericContext -> print(it.NONNUMERIC().text)
+                            is IdentifierContext -> print(state.variables[it.COBOL_WORD().text]!!.getString())
+                        }
+                    }
+                }
+            }
         } else {
-            instructions.add { state -> state.also { ctx.atomic()?.forEach { when (it) {
-                is NumericContext -> println(it.NUMERIC().text)
-                is NonnumericContext -> println(it.NONNUMERIC().text)
-                is IdentifierContext -> println(state.variables[it.COBOL_WORD().text]!!.getString())
-            }  } } }
+            instructions.add { state ->
+                state.also {
+                    ctx.atomic()?.forEach {
+                        when (it) {
+                            is NumericContext -> println(it.NUMERIC().text)
+                            is NonnumericContext -> println(it.NONNUMERIC().text)
+                            is IdentifierContext -> println(state.variables[it.COBOL_WORD().text]!!.getString())
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -74,7 +87,8 @@ class Interpreter(): CobolBaseListener() {
             is IdentifierContext -> symbolTable[(ctx.atomic() as IdentifierContext).COBOL_WORD().text]
             else -> TODO("If you see this, a branch is missing here")
         }
-        instructions.add { state -> state.apply {
+        instructions.add { state ->
+            state.apply {
                 val targets = ctx.COBOL_WORD().map { it.text }
                 targets.forEach { variables[it] = value }
             }
@@ -85,5 +99,43 @@ class Interpreter(): CobolBaseListener() {
         instructions.add { state -> state.apply { stop = true } }
     }
 
+
+    override fun exitAddStat(ctx: CobolParser.AddStatContext) {
+        val valueLeft = when (ctx.atomic(0)) {
+            is NumericContext -> Value.Numeric((ctx.atomic() as NumericContext).NUMERIC().text)
+            is NonnumericContext -> Value.NonNumeric((ctx.atomic() as NonnumericContext).NONNUMERIC().text)
+            is IdentifierContext -> symbolTable[(ctx.atomic() as IdentifierContext).COBOL_WORD().text]
+            else -> TODO()
+        }
+        val valueRight = when (ctx.atomic(1)) {
+            is NumericContext -> Value.Numeric((ctx.atomic() as NumericContext).NUMERIC().text)
+            is NonnumericContext -> Value.NonNumeric((ctx.atomic() as NonnumericContext).NONNUMERIC().text)
+            is IdentifierContext -> symbolTable[(ctx.atomic() as IdentifierContext).COBOL_WORD().text]
+            else -> TODO()
+        }
+        if (ctx.GIVING().size > 0) {
+        
+        } else {
+            instructions.add { state ->
+                state.apply {
+                    ctx.atomic()?.forEach { it ->
+                        when (it) {
+                            is NumericContext -> {
+                                val targets = ctx.atomic().map { ctx.atomic(1).text }
+                                targets.forEach {
+                                    variables[it] =
+                                        Value.Numeric(
+                                            valueLeft.toString().toDouble() + valueRight.toString().toDouble()
+                                        )
+                                }
+                            }
+                            is NonnumericContext -> TODO()
+                            is IdentifierContext -> TODO()
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 }
