@@ -1,0 +1,130 @@
+lexer grammar Keywords;
+
+ACCEPT: 'ACCEPT';
+ADD: 'ADD';
+ADVANCING: 'ADVANCING';
+ALSO: 'ALSO';
+ALTER: 'ALTER';
+BY: 'BY';
+CALL: 'CALL';
+CONTENT: 'CONTENT';
+DATA: 'DATA';
+DELIMITED: 'DELIMITED';
+DISPLAY: 'DISPLAY';
+DIVIDE: 'DIVIDE';
+DIVISION: 'DIVISION';
+ELSE: 'ELSE';
+END: 'END';
+ERROR: 'ERROR';
+EVALUATE: 'EVALUATE';
+FROM: 'FROM';
+GIVING: 'GIVING';
+GO: 'GO';
+HIGH: 'HIGH';
+IDENTIFICATION: 'IDENTIFICATION';
+IF: 'IF';
+INTO: 'INTO';
+IS: 'IS';
+LIKE: 'LIKE';
+LOOP: 'LOOP';
+LOW: 'LOW';
+MOVE: 'MOVE';
+MULTIPLY: 'MULTIPLY';
+NEXT: 'NEXT';
+NO: 'NO';
+OCCURS: 'OCCURS';
+OF: 'OF';
+OFF: 'OFF';
+ON: 'ON';
+OTHER: 'OTHER';
+PERFORM: 'PERFORM';
+PICTURE: 'PICTURE';
+PROCEDURE: 'PROCEDURE';
+PROCEED: 'PROCEED';
+PROGRAM_ID: 'PROGRAM_ID';
+REFERENCE: 'REFERENCE';
+REMAINDER: 'REMAINDER';
+SENTENCE: 'SENTENCE';
+SIGNAL: 'SIGNAL';
+SIZE: 'SIZE';
+SPACE: 'SPACE';
+SPACES: 'SPACES';
+STOP: 'STOP';
+SUBTRACT: 'SUBTRACT';
+THEN: 'THEN';
+THROUGH: 'THROUGH';
+TIMES: 'TIMES';
+TO: 'TO';
+UNTIL: 'UNTIL';
+USING: 'USING';
+VALUE: 'VALUE';
+VALUES: 'VALUES';
+VARYING: 'VARYING';
+WHEN: 'WHEN';
+WHILE: 'WHILE';
+WITH: 'WITH';
+
+Keywords: ACCEPT
+        | ADD
+        | ADVANCING
+        | ALSO
+        | ALTER
+        | BY
+        | CALL
+        | CONTENT
+        | DATA
+        | DELIMITED
+        | DISPLAY
+        | DIVIDE
+        | DIVISION
+        | ELSE
+        | END
+        | ERROR
+        | EVALUATE
+        | FROM
+        | GIVING
+        | GO
+        | HIGH
+        | IDENTIFICATION
+        | IF
+        | INTO
+        | IS
+        | LIKE
+        | LOOP
+        | LOW
+        | MOVE
+        | MULTIPLY
+        | NEXT
+        | NO
+        | OCCURS
+        | OF
+        | OFF
+        | ON
+        | OTHER
+        | PERFORM
+        | PICTURE
+        | PROCEDURE
+        | PROCEED
+        | PROGRAM_ID
+        | REFERENCE
+        | REMAINDER
+        | SENTENCE
+        | SIGNAL
+        | SIZE
+        | SPACE
+        | SPACES
+        | STOP
+        | SUBTRACT
+        | THEN
+        | THROUGH
+        | TIMES
+        | TO
+        | UNTIL
+        | USING
+        | VALUE
+        | VALUES
+        | VARYING
+        | WHEN
+        | WHILE
+        | WITH
+        ;

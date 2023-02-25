@@ -1,112 +1,140 @@
 grammar Cobol;
+import Keywords;
 
 // Root rule
-program: id_div env_div? data_div? proc_div? EOF;
+program: id_div data_div? proc_div? EOF;
 
 // --- IDENTIFICATION DIVISION ---
-id_div: IDENTIFICATION_DIVISION DOT
-        program_id;
+id_div: IDENTIFICATION DIVISION DOT
+        INDENT program_id (INDENT id_clause)*;
 
-program_id: PROGRAM_ID COBOL_WORD DOT;
+program_id: PROGRAM_ID DOT ID_DIV_VALUE DOT;
 
-// --- ENVIRONMENT DIVISION (tbi) --- not yet relevant
-env_div: ;
+id_clause: ID_DIV_NAME DOT ID_DIV_VALUE DOT;
 
 // --- DATA DIVISION ---
-data_div: DATA_DIVISION DOT
-        file_section? ws_section? ls_section? linkage_section?;
+data_div: DATA DIVISION DOT data_entry+;
 
-file_section: ; // tbi, not yet relevant
+data_entry: LEVEL identifier (picture_clause | like_clause)? occurs_clause?;
 
-ws_section: WORKING_STORAGE_SECTION DOT
-            ws_sentence+;
-ws_sentence: DIGIT DIGIT COBOL_WORD PICTURE ('A' | '9') LPAR DIGIT+ RPAR DOT;
+picture_clause: PICTURE IS REPRESENTATION;
 
-ls_section: LOCAL_STORAGE_SECTION DOT; // tbi, working storage should do for now
+like_clause: LIKE identifier;
 
-linkage_section: ; // tbi, not yet relevant
+occurs_clause: OCCURS INT TIMES;
 
 // --- PROCEDURE DIVISION ---
-proc_div: PROCEDURE_DIVISION DOT
-          (statement DOT)+
-          stop_statement DOT;
+proc_div: PROCEDURE DIVISION (using_clause)? DOT
+          (INDENT sentence)*
+          paragraph+;
 
-statement: DISPLAY (atomic /*(DELIMITED_BY (SPACE | SIZE | NONNUMERIC | NUMERIC))?*/)+ WITH_NO_ADVANCING? #displayStat
-         | ACCEPT COBOL_WORD+                                                                             #acceptStat
-         | ADD (atomic)+ TO (atomic)+ (GIVING COBOL_WORD)*                                                #addStat
-         | DIVIDE atomic INTO COBOL_WORD (GIVING COBOL_WORD)? (REMINDER COBOL_WORD)?/*TODO finish*/ #divideStat
-         | EVALUATE  /* this one looks absolutely horrendous TODO finish? */                              #evaluateStat
-         | IF boolean_expression THEN statement+ (ELSE statement+) END                                    #ifStat
-         | MOVE (atomic /*| HIGH_VALUES | LOW_VALUES | SPACES*/) TO (COBOL_WORD)+                         #moveStat
-         | MULTIPLY atomic BY atomic+ (GIVING COBOL_WORD)?                                                #multiplyStat
-         | PERFORM procedure_name (THROUGH procedure_name)? (atomic TIMES)?                               #performStat
-         | STOP STOP                                                                                      #stopStat
-         | SUBTRACT (atomic)+ FROM (atomic)+ (GIVING COBOL_WORD)*                                         #subtractStat
+paragraph: procedure_name DOT (INDENT sentence)+;
+
+sentence: statement+ DOT;
+
+statement: ACCEPT identifier+                                                                #acceptStat
+         | ADD (atomic)+ TO atomic giving_clause*                                            #addStat
+         | ALTER procedure_name TO PROCEED TO procedure_name                                 #alterStat
+         | CALL ID_DIV_NAME using_clause?                                                    #callStat
+         | DISPLAY display_clause+ (WITH NO ADVANCING)?                                      #displayStat
+         | DIVIDE atomic INTO atomic+ (giving_clause+ | giving_clause REMAINDER identifier)? #divideStat
+         | EVALUATE any_expression also_clause* when_block+ END                              #evaluateStat
+         | GO TO procedure_name                                                              #gotoStat
+         | IF boolean_expression THEN statement+ (ELSE statement+)? END                      #ifStat
+         | LOOP loop_statement* END                                                          #loopStat
+         | MOVE move_expression TO identifier+                                               #moveStat
+         | MULTIPLY atomic BY atomic+ giving_clause?                                         #multiplyStat
+         | NEXT SENTENCE                                                                     #nextStat
+         | PERFORM procedure_name (THROUGH procedure_name)? (atomic TIMES)?                  #performStat
+         | SIGNAL signal_expression ON ERROR                                                 #signalStat
+         | STOP                                                                              #stopStat
+         | SUBTRACT (atomic)+ FROM (atomic+ | atomic giving_clause+)                         #subtractStat
          ;
 
-stop_statement: STOP;
+signal_expression: OFF            #offSignal
+                 | procedure_name #procedureSignal
+                 ;
 
-// Anything smaller than a statement
+also_clause: ALSO any_expression;
+
+display_clause: atomic (delimited_expression)?;
+
+delimited_expression : DELIMITED BY SPACE   #spaceDelimited
+                     | DELIMITED BY SIZE    #sizeDelimited
+                     | DELIMITED BY literal #literalDelimited
+                     ;
+
+giving_clause: GIVING identifier;
+
+loop_statement: VARYING identifier? (FROM atomic)? (TO atomic)? (BY atomic)? #varyingLoop
+              | WHILE boolean_expression                                     #whileLoop
+              | UNTIL boolean_expression                                     #untilLoop
+              | statement                                                    #statLoop
+              ;
+
+move_expression: atomic      #atomicMove
+               | HIGH VALUES #highMove
+               | LOW VALUES  #lowMove
+               | SPACES      #spacesMove
+               ;
+
+using_clause: USING (by_clause)+;
+
+by_clause: BY REFERENCE identifier #referenceBy
+         | BY CONTENT atomic       #contentBy
+         | BY VALUE atomic         #valueBy
+         ;
+
+when_block: when_clause statement+;
+
+when_clause: WHEN (when_expression (ALSO when_expression)*) #exprWhen
+           | WHEN OTHER                                     #otherWhen
+           ;
+
+when_expression: atomic (THROUGH atomic)*;
+
+any_expression: arithmetic_expression #arithmeticExpr
+              | string_expression     #stringExpr
+              | boolean_expression    #booleanExpr
+              ;
+
+arithmetic_expression: ;
+
+string_expression: ;
+
 boolean_expression: ;
 
 procedure_name: ;
 
-atomic: NUMERIC    #numeric
-      | NONNUMERIC #nonnumeric
-      | COBOL_WORD #identifier
+atomic: literal    #literalAtom
+      | identifier #identifierAtom
       ;
 
-// --- Keywords ---
-ACCEPT: 'ACCEPT';
-ADD: 'ADD';
-ALTER:'ALTER';
-BY: 'BY';
-CALL:'CALL';
-COPY:'COPY';
-CORR:'CORR';
-CORRESPONDING:'CORRESPONDING';
-DATA_DIVISION:'DATA DIVISION';
-DELIMITED_BY: 'DELIMITED BY';
-DISPLAY:'DISPLAY';
-DIVIDE:'DIVIDE';
-DIVISION:'DIVISION';
-ELSE: 'ELSE';
-END: 'END';
-EVALUATE:'EVALUATE';
-FROM:'FROM';
-GIVING:'GIVING';
-GO_TO:'GO TO';
-IDENTIFICATION_DIVISION: 'IDENTIFICATION DIVISION';
-IF:'IF';
-INTO:'INTO';
-LOOP:'LOOP';
-LOCAL_STORAGE_SECTION : 'LOCAL-STORAGE SECTION';
-MOVE:'MOVE';
-MULTIPLY:'MULTIPLY';
-NEXT_SENTENCE:'NEXT SENTENCE';
-PERFORM: 'PERFORM';
-PICTURE: 'PICTURE';
-PROCEDURE_DIVISION: 'PROCEDURE DIVISION';
-PROGRAM_ID: 'PROGRAM-ID';
-REMINDER:'REMINDER';
-ROUNDED: 'ROUNDED';
-SIGNAL:'SIGNAL';
-SIZE: 'SIZE';
-SPACE: 'SPACE';
-STOP: 'STOP';
-SUBTRACT: 'SUBTRACT';
-THEN: 'THEN';
-TIMES: 'TIMES';
-TO: 'TO';
-THROUGH: 'THROUGH';
-WITH_NO_ADVANCING: 'WITH NO ADVANCING';
-WORKING_STORAGE_SECTION: 'WORKING-STORAGE SECTION';
+literal: NUMERIC    #numericLit
+       | NONNUMERIC #nonnumericLit
+       ;
 
+identifier: COBOL_WORD               #primitiveId
+          | identifier OF identifier #qualifiedId // Maybe this works better with (OF identifier)+
+          | identifier LPAR INT RPAR #indexId
+          ;
 
-// TODO double-check that these are still synced;
-Keywords: ACCEPT|ADD|ALTER|CALL|COPY|DATA_DIVISION|DISPLAY|DIVIDE|DIVISION|EVALUATE|
-GO_TO|IDENTIFICATION_DIVISION|IF|LOOP|MOVE|MULTIPLY|NEXT_SENTENCE|SIGNAL|STOP|SUBTRACT|
-WORKING_STORAGE_SECTION|LOCAL_STORAGE_SECTION;
+// Special tokens
+
+ID_DIV_NAME: ID_DIV_CHAR+; // Identification Division names and values, anything but a dot
+ID_DIV_VALUE: ID_DIV_CHAR+;
+
+REPRESENTATION: ([9AXZ](LPAR INT RPAR)?)+ // A valid representation string. S and V may only occur once, number in parentheses may shorthand repetition.
+              | ([9AXZ](LPAR INT RPAR)?)*'S'([9AXZ](LPAR INT RPAR)?)*('V'([9AXZ](LPAR INT RPAR)?)*)?
+              | ([9AXZ](LPAR INT RPAR)?)*'V'([9AXZ](LPAR INT RPAR)?)*('S'([9AXZ](LPAR INT RPAR)?)*)?
+              ;
+
+LEVEL: DIGIT DIGIT;
+INT: DIGIT+;
+LPAR: '(';
+RPAR: ')';
+INDENT: '\u00b7\u00b7\u00b7\u00b7'; // \u00b7 is ·, a 'fake space' inserted by the preprocessor
+DOT: '.';
 
 // --- LITERALS ---
 // A valid COBOL word cannot start or end with a dash or underscore and must have at least one letter
@@ -117,27 +145,21 @@ COBOL_WORD: (DIGIT (DIGIT | [-_])*)? LETTER ([-_]* ALPHANUMERIC)*;
 NONNUMERIC: '\'' (SPECIAL | LETTER | DIGIT | QUOTE | (APOST APOST) | ' ')+ '\''
           | '"' (SPECIAL | LETTER | DIGIT | APOST | (QUOTE QUOTE) | ' ')+ '"';
 
-FIXEDPOINT: SIGN? DIGIT+ (DOT DIGIT+)?;
-FLOATINGPOINT: SIGN? DIGIT+ DOT DIGIT+ 'E' SIGN? DIGIT+;
-NUMERIC: FIXEDPOINT | FLOATINGPOINT;
+NUMERIC: SIGN? DIGIT+ (DOT DIGIT+)?;
 
 // --- Character classes and sets ---
-ALPHANUMERIC: LETTER | DIGIT;
-LETTER: LOWERCASE | UPPERCASE;
-PAR: LPAR | RPAR;
+fragment ALPHANUMERIC: LETTER | DIGIT;
+fragment LETTER: LOWERCASE | UPPERCASE;
+fragment PAR: LPAR | RPAR;
 
-SPECIAL: [+\-*/=$,;><:_];
-DOT: '.';
-APOST: '\'';
-QUOTE: '"';
-LPAR: '(';
-RPAR: ')';
+fragment SPECIAL: [+\-*/=$,;><:_];
+fragment APOST: '\'';
+fragment QUOTE: '"';
 // All valid characters in COBOL.
-CHARACTER: SPECIAL | LETTER | DIGIT | DOT | APOST | QUOTE | PAR;
-SIGN: [+-];
-DIGIT: [0-9];
-LOWERCASE: [a-z];
-UPPERCASE: [A-Z];
+fragment CHARACTER: SPECIAL | LETTER | DIGIT | DOT | APOST | QUOTE | PAR;
+fragment ID_DIV_CHAR: SPECIAL | LETTER | DIGIT | APOST | QUOTE | PAR; // Anything except a DOT (.)
+fragment SIGN: [+-];
+fragment DIGIT: [0-9];
+fragment LOWERCASE: [a-z];
+fragment UPPERCASE: [A-Z];
 WS: [ \r\n]+ -> skip;
-
-
