@@ -27,8 +27,9 @@ fun preprocess(code: String): CharStream {
             when (lines[i][6]) {
                 ' ' -> add(lines[i].drop(7)) // Code, add new line
                 '*' -> add("") // Comment, add empty line instead
-                '-' -> {  // Continuation, add new line. Since the grammar ignores whitespace, it should be fine like this
-                    add(lines[i].drop(7))
+                '-' -> {  // Continuation
+                    this[i-1] = this[i-1] + '¬' // Add a marker to the last line so ANTLR can ignore a possible indent
+                    add(lines[i].drop(7)) // And add the new one
                 }
                 else -> errors.addError(i + 1, 7, "Illegal character '${lines[i][6]}', must be ' ', '*' or '-'")
             }

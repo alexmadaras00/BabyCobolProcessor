@@ -41,7 +41,7 @@ PERFORM: 'PERFORM';
 PICTURE: 'PICTURE';
 PROCEDURE: 'PROCEDURE';
 PROCEED: 'PROCEED';
-PROGRAM_ID: 'PROGRAM_ID';
+PROGRAM_ID: 'PROGRAM-ID';
 REFERENCE: 'REFERENCE';
 REMAINDER: 'REMAINDER';
 SENTENCE: 'SENTENCE';
@@ -64,67 +64,46 @@ WHEN: 'WHEN';
 WHILE: 'WHILE';
 WITH: 'WITH';
 
-Keywords: ACCEPT
-        | ADD
-        | ADVANCING
-        | ALSO
-        | ALTER
-        | BY
-        | CALL
-        | CONTENT
-        | DATA
-        | DELIMITED
-        | DISPLAY
-        | DIVIDE
-        | DIVISION
-        | ELSE
-        | END
-        | ERROR
-        | EVALUATE
-        | FROM
-        | GIVING
-        | GO
-        | HIGH
-        | IDENTIFICATION
-        | IF
-        | INTO
-        | IS
-        | LIKE
-        | LOOP
-        | LOW
-        | MOVE
-        | MULTIPLY
-        | NEXT
-        | NO
-        | OCCURS
-        | OF
-        | OFF
-        | ON
-        | OTHER
-        | PERFORM
-        | PICTURE
-        | PROCEDURE
-        | PROCEED
-        | PROGRAM_ID
-        | REFERENCE
-        | REMAINDER
-        | SENTENCE
-        | SIGNAL
-        | SIZE
-        | SPACE
-        | SPACES
-        | STOP
-        | SUBTRACT
-        | THEN
-        | THROUGH
-        | TIMES
-        | TO
-        | UNTIL
-        | USING
-        | VALUE
-        | VALUES
-        | VARYING
-        | WHEN
-        | WHILE
-        | WITH
-        ;
+// Special tokens
+
+// A valid COBOL word cannot start or end with a dash or underscore and must have at least one letter
+COBOL_WORD: (DIGIT (DIGIT | DASH)*)? LETTER (DASH* ALPHANUMERIC)*;
+
+REPRESENTATION: ([9AXZ](LPAR INT RPAR)?)+ // A valid representation string. S and V may only occur once, number in parentheses may shorthand repetition.
+              | ([9AXZ](LPAR INT RPAR)?)*'S'([9AXZ](LPAR INT RPAR)?)*('V'([9AXZ](LPAR INT RPAR)?)*)?
+              | ([9AXZ](LPAR INT RPAR)?)*'V'([9AXZ](LPAR INT RPAR)?)*('S'([9AXZ](LPAR INT RPAR)?)*)?
+              ;
+
+LEVEL: DIGIT DIGIT;
+INT: DIGIT+;
+LPAR: '(';
+RPAR: ')';
+DOT: '.';
+
+// --- LITERALS ---
+
+// A non-numeric literal can be delimited by a pair of apostrophes or quotes. Doubling a quote or apostrophe can escape it,
+// and a non-numeric literal must have at least one character inside.
+NONNUMERIC: '\'' (SPECIAL | LETTER | DIGIT | QUOTE | (APOST APOST) | ' ')+ '\''
+          | '"' (SPECIAL | LETTER | DIGIT | APOST | (QUOTE QUOTE) | ' ')+ '"';
+
+NUMERIC: SIGN? DIGIT+ (DOT DIGIT+)?;
+
+ID_DIV_WORD: ID_DIV_CHAR+; // Identification Division names and values, anything but a dot
+
+// --- Character classes and sets ---
+fragment ALPHANUMERIC: LETTER | DIGIT;
+fragment LETTER: LOWERCASE | UPPERCASE;
+fragment PAR: LPAR | RPAR;
+
+fragment SPECIAL: [+*/=$,;><:];
+fragment DASH: [-_];
+fragment APOST: '\'';
+fragment QUOTE: '"';
+// All valid characters in COBOL.
+fragment CHARACTER: SPECIAL | LETTER | DIGIT | DOT | APOST | QUOTE | PAR | DASH;
+fragment ID_DIV_CHAR: SPECIAL | LETTER | DIGIT | APOST | QUOTE | PAR; // Anything except a DOT (.)
+fragment SIGN: [+-];
+fragment DIGIT: [0-9];
+fragment LOWERCASE: [a-z];
+fragment UPPERCASE: [A-Z];

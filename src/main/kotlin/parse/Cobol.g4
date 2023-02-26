@@ -2,18 +2,21 @@ grammar Cobol;
 import Keywords;
 
 // Root rule
-program: id_div data_div? proc_div? EOF;
+program: id_div (data_div)? proc_div? EOF;
 
 // --- IDENTIFICATION DIVISION ---
 id_div: IDENTIFICATION DIVISION DOT
         INDENT program_id (INDENT id_clause)*;
 
-program_id: PROGRAM_ID DOT ID_DIV_VALUE DOT;
+program_id: PROGRAM_ID DOT id_div_value DOT;
 
-id_clause: ID_DIV_NAME DOT ID_DIV_VALUE DOT;
+id_clause: id_div_name DOT id_div_value DOT;
+
+id_div_name: COBOL_WORD | ID_DIV_WORD;
+id_div_value: COBOL_WORD | ID_DIV_WORD;
 
 // --- DATA DIVISION ---
-data_div: DATA DIVISION DOT data_entry+;
+data_div: DATA DIVISION DOT (data_entry DOT)+;
 
 data_entry: LEVEL identifier (picture_clause | like_clause)? occurs_clause?;
 
@@ -25,17 +28,18 @@ occurs_clause: OCCURS INT TIMES;
 
 // --- PROCEDURE DIVISION ---
 proc_div: PROCEDURE DIVISION (using_clause)? DOT
-          (INDENT sentence)*
-          paragraph+;
+          ((INDENT sentence)+ | paragraph) // first paragraph may be nameless
+          paragraph*
+        ;
 
 paragraph: procedure_name DOT (INDENT sentence)+;
 
-sentence: statement+ DOT;
+sentence: statement (INDENT statement)* DOT;
 
 statement: ACCEPT identifier+                                                                #acceptStat
          | ADD (atomic)+ TO atomic giving_clause*                                            #addStat
          | ALTER procedure_name TO PROCEED TO procedure_name                                 #alterStat
-         | CALL ID_DIV_NAME using_clause?                                                    #callStat
+         | CALL id_div_name using_clause?                                                    #callStat
          | DISPLAY display_clause+ (WITH NO ADVANCING)?                                      #displayStat
          | DIVIDE atomic INTO atomic+ (giving_clause+ | giving_clause REMAINDER identifier)? #divideStat
          | EVALUATE any_expression also_clause* when_block+ END                              #evaluateStat
@@ -119,47 +123,8 @@ identifier: COBOL_WORD               #primitiveId
           | identifier LPAR INT RPAR #indexId
           ;
 
-// Special tokens
 
-ID_DIV_NAME: ID_DIV_CHAR+; // Identification Division names and values, anything but a dot
-ID_DIV_VALUE: ID_DIV_CHAR+;
-
-REPRESENTATION: ([9AXZ](LPAR INT RPAR)?)+ // A valid representation string. S and V may only occur once, number in parentheses may shorthand repetition.
-              | ([9AXZ](LPAR INT RPAR)?)*'S'([9AXZ](LPAR INT RPAR)?)*('V'([9AXZ](LPAR INT RPAR)?)*)?
-              | ([9AXZ](LPAR INT RPAR)?)*'V'([9AXZ](LPAR INT RPAR)?)*('S'([9AXZ](LPAR INT RPAR)?)*)?
-              ;
-
-LEVEL: DIGIT DIGIT;
-INT: DIGIT+;
-LPAR: '(';
-RPAR: ')';
 INDENT: '\u00b7\u00b7\u00b7\u00b7'; // \u00b7 is ·, a 'fake space' inserted by the preprocessor
-DOT: '.';
-
-// --- LITERALS ---
-// A valid COBOL word cannot start or end with a dash or underscore and must have at least one letter
-COBOL_WORD: (DIGIT (DIGIT | [-_])*)? LETTER ([-_]* ALPHANUMERIC)*;
-
-// A non-numeric literal can be delimited by a pair of apostrophes or quotes. Doubling a quote or apostrophe can escape it,
-// and a non-numeric literal must have at least one character inside.
-NONNUMERIC: '\'' (SPECIAL | LETTER | DIGIT | QUOTE | (APOST APOST) | ' ')+ '\''
-          | '"' (SPECIAL | LETTER | DIGIT | APOST | (QUOTE QUOTE) | ' ')+ '"';
-
-NUMERIC: SIGN? DIGIT+ (DOT DIGIT+)?;
-
-// --- Character classes and sets ---
-fragment ALPHANUMERIC: LETTER | DIGIT;
-fragment LETTER: LOWERCASE | UPPERCASE;
-fragment PAR: LPAR | RPAR;
-
-fragment SPECIAL: [+\-*/=$,;><:_];
-fragment APOST: '\'';
-fragment QUOTE: '"';
-// All valid characters in COBOL.
-fragment CHARACTER: SPECIAL | LETTER | DIGIT | DOT | APOST | QUOTE | PAR;
-fragment ID_DIV_CHAR: SPECIAL | LETTER | DIGIT | APOST | QUOTE | PAR; // Anything except a DOT (.)
-fragment SIGN: [+-];
-fragment DIGIT: [0-9];
-fragment LOWERCASE: [a-z];
-fragment UPPERCASE: [A-Z];
-WS: [ \r\n]+ -> skip;
+fragment LC: '\u00ac' WS? INDENT?; // \u00ac is ¬, a marker for a continued line
+fragment WS: [ \t\r\n]+;
+SKIP_: (LC | WS) -> skip;
