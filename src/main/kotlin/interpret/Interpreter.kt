@@ -6,15 +6,21 @@ import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import parse.CobolBaseListener
 import parse.CobolParser
-import parse.CobolParser.IdentifierContext
-import parse.CobolParser.NonnumericContext
-import parse.CobolParser.NumericContext
+import parse.CobolParser.AtomicMoveContext
+import parse.CobolParser.IdentifierAtomContext
+import parse.CobolParser.LiteralAtomContext
+import parse.CobolParser.NonnumericLitContext
+import parse.CobolParser.NumericLitContext
+import parse.CobolParser.PrimitiveIdContext
 import parse.CompileException
+import parse.CompileException.Companion.addError
+import program.*
 
 
-class Interpreter() : CobolBaseListener() {
-    val symbolTable = emptyMap<String, Value?>().toMutableMap()
-    val instructions = emptyList<(State) -> State>().toMutableList()
+class Interpreter(): CobolBaseListener() {
+    val identification = emptyMap<String, String>().toMutableMap()
+    val symbolTable = emptyMap<String, Value>().toMutableMap()
+    val procedure = listOf(MutableParagraph("", emptyList<MutableSentence>().toMutableList())).toMutableList()
     val errors = emptyList<String>().toMutableList()
 
     /**
@@ -24,18 +30,17 @@ class Interpreter() : CobolBaseListener() {
         ParseTreeWalker().walk(this, tree)
 
         // Throw a CompileException if errors were encountered, or return the resulting BabyCOBOL program.
-        if (errors.isNotEmpty()) {
-            throw CompileException(errors)
-        }
-        return BabyCobol(symbolTable, instructions)
+        if (errors.isNotEmpty()) throw CompileException(errors)
+        return BabyCobol(identification.toMap(), symbolTable.toMap(), procedure.toList())
     }
 
+    // --- Bookkeeping section ----------------------------------------------------------------------------------------
     /**
      * Adds an error at a given node.
      * @param node the node where the error was encountered
      * @param message the error message
      */
-    fun addError(node: ParserRuleContext, message: String) {
+    private fun addError(node: ParserRuleContext, message: String) {
         addError(node.start, message)
     }
 
@@ -44,61 +49,51 @@ class Interpreter() : CobolBaseListener() {
      * @param token the token where the error was encountered
      * @param message the error message
      */
-    fun addError(token: Token, message: String) {
-        errors.add("Error at line ${token.line}:${token.charPositionInLine} $message")
+    private fun addError(token: Token, message: String) {
+        errors.addError(token.line, token.charPositionInLine, message)
     }
 
-    override fun exitWs_sentence(ctx: CobolParser.Ws_sentenceContext) {
-        symbolTable[ctx.COBOL_WORD().text!!] = null
+    /**
+     * Adds a statement to the current position in the procedure IR.
+     */
+    private fun addStatement(stat: (State) -> State) {
+        val curProcedure = procedure[procedure.lastIndex]
+        val curSentence = curProcedure.second.let { it[it.lastIndex] }
+        curSentence.add(stat)
     }
 
-    override fun exitDisplayStat(ctx: CobolParser.DisplayStatContext) {
-        if (ctx.WITH_NO_ADVANCING() != null) {
-            instructions.add { state ->
-                state.also {
-                    ctx.atomic()?.forEach {
-                        when (it) {
-                            is NumericContext -> print(it.NUMERIC().text)
-                            is NonnumericContext -> print(it.NONNUMERIC().text)
-                            is IdentifierContext -> print(state.variables[it.COBOL_WORD().text]!!.getString())
-                        }
-                    }
-                }
-            }
-        } else {
-            instructions.add { state ->
-                state.also {
-                    ctx.atomic()?.forEach {
-                        when (it) {
-                            is NumericContext -> println(it.NUMERIC().text)
-                            is NonnumericContext -> println(it.NONNUMERIC().text)
-                            is IdentifierContext -> println(state.variables[it.COBOL_WORD().text]!!.getString())
-                        }
-                    }
-                }
-            }
+    // --- Scope enters and exits -------------------------------------------------------------------------------------
+    /**
+     * Adds every entry in the Identification Division to the program.
+     */
+    override fun exitId_div(ctx: CobolParser.Id_divContext) {
+        // PROGRAM-ID is mandatory, add error if it is missing
+        if (ctx.ID_CLAUSE().none { it.text.takeWhile { it != '.' } == "PROGRAM-ID" }) {
+            addError(ctx, "Missing mandatory clause PROGRAM-ID")
         }
+        // Take all name-value pairs and add them to the list
+        identification.putAll(ctx.ID_CLAUSE().associate {
+            it.text.split(". ")
+                .let { (name, value) -> name to value }
+        })
     }
 
-    override fun exitMoveStat(ctx: CobolParser.MoveStatContext) {
-        val value = when (ctx.atomic()) {
-            is NumericContext -> Value.Numeric((ctx.atomic() as NumericContext).NUMERIC().text)
-            is NonnumericContext -> Value.NonNumeric((ctx.atomic() as NonnumericContext).NONNUMERIC().text)
-            is IdentifierContext -> symbolTable[(ctx.atomic() as IdentifierContext).COBOL_WORD().text]
-            else -> TODO("If you see this, a branch is missing here")
-        }
-        instructions.add { state ->
-            state.apply {
-                val targets = ctx.COBOL_WORD().map { it.text }
-                targets.forEach { variables[it] = value }
-            }
-        }
+    /**
+     * Opens a new paragraph. Preceding paragraphs should now be considered final.
+     */
+    override fun enterParagraph(ctx: CobolParser.ParagraphContext) {
+        val paragraph = ctx.procedure_name().text
+        procedure.add(MutableParagraph(paragraph, emptyList<MutableSentence>().toMutableList()))
     }
 
-    override fun exitStop_statement(ctx: CobolParser.Stop_statementContext) {
-        instructions.add { state -> state.apply { stop = true } }
+    /**
+     * Opens a new sentence. Preceding sentences should now be considered final.
+     */
+    override fun enterSentence(ctx: CobolParser.SentenceContext) {
+        procedure[procedure.lastIndex].second.add(emptyList<Statement>().toMutableList())
     }
 
+    // --- Statements -------------------------------------------------------------------------------------------------
 
     override fun exitAddStat(ctx: CobolParser.AddStatContext) {
         val valueLeft = when (ctx.atomic(0)) {
@@ -138,4 +133,65 @@ class Interpreter() : CobolBaseListener() {
         }
     }
 
+    override fun exitDisplayStat(ctx: CobolParser.DisplayStatContext) {
+        val wna = ctx.wna() != null
+
+        val toDisplay: List<(State) -> String> = ctx.display_clause().map { when (val atom = it.atomic()) {
+            is LiteralAtomContext -> when (atom.literal()) {
+                is NumericLitContext -> { _ -> atom.text }
+                is NonnumericLitContext -> { _ -> atom.text }
+                else -> TODO("This should not occur unless the grammar rule 'literalAtom' was changed")
+            }
+            is IdentifierAtomContext -> {state -> state.data[it.atomic().text]!!.toString() }
+            else -> TODO("This should not occur unless the grammar rule 'atomic' was changed")
+        }  }
+
+        addStatement { state -> state.apply {
+            val toPrint = toDisplay.map { it(state) } // toDisplay has functions, so invoke with the State
+            if (wna) {
+                toPrint.forEach { print(it) }
+            } else {
+                toPrint.forEach { println(it) }
+            }
+            this.next()
+        } }
+    }
+
+    override fun exitMoveStat(ctx: CobolParser.MoveStatContext) {
+        val value = when (val move = ctx.move_expression()) {
+            is AtomicMoveContext -> {
+                when (val atom = move.atomic()) {
+                is LiteralAtomContext -> Value(atom.literal().text)
+                // Not entirely correct as it does not check what kind of identifier it is. Array access and qualification will break this
+                is IdentifierAtomContext -> symbolTable[atom.identifier().text]!!
+                else -> TODO("This should not occur unless the grammar rule 'atomicMove' was changed")
+                }
+            }
+            else -> TODO()
+        }
+
+        val targets = ctx.to.map {
+            when (it) {
+                is PrimitiveIdContext -> it.COBOL_WORD().text
+                else -> TODO("This should not occur unless the grammar rule 'identifier' was changed")
+            }
+        }
+        addStatement {state -> state.apply {
+            targets.forEach { target -> data[target] = value }
+            this.next()
+        } }
+    }
+
+    // --- Control Flow section ---------------------------------------------------------------------------------------
+    override fun exitNextStat(ctx: CobolParser.NextStatContext?) {
+        addStatement {  state -> state.apply {
+            this.nextSentence()
+        } }
+    }
+
+    override fun exitStopStat(ctx: CobolParser.StopStatContext?) {
+        addStatement { state -> state.apply {
+            this.stop()
+        } }
+    }
 }
