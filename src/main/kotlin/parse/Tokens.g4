@@ -1,10 +1,12 @@
-lexer grammar Keywords;
+lexer grammar Tokens;
 
+// --- Keywords (reserved) ---------------------------------------------
 ACCEPT: 'ACCEPT';
 ADD: 'ADD';
 ADVANCING: 'ADVANCING';
 ALSO: 'ALSO';
 ALTER: 'ALTER';
+AND: 'AND';
 BY: 'BY';
 CALL: 'CALL';
 CONTENT: 'CONTENT';
@@ -17,6 +19,7 @@ ELSE: 'ELSE';
 END: 'END';
 ERROR: 'ERROR';
 EVALUATE: 'EVALUATE';
+FALSE: 'FALSE';
 FROM: 'FROM';
 GIVING: 'GIVING';
 GO: 'GO';
@@ -32,16 +35,18 @@ MOVE: 'MOVE';
 MULTIPLY: 'MULTIPLY';
 NEXT: 'NEXT';
 NO: 'NO';
+NOT: 'NOT';
 OCCURS: 'OCCURS';
 OF: 'OF';
 OFF: 'OFF';
 ON: 'ON';
+OR: 'OR';
 OTHER: 'OTHER';
 PERFORM: 'PERFORM';
 PICTURE: 'PICTURE';
 PROCEDURE: 'PROCEDURE';
 PROCEED: 'PROCEED';
-PROGRAM_ID: 'PROGRAM-ID';
+//PROGRAM_ID: 'PROGRAM-ID';
 REFERENCE: 'REFERENCE';
 REMAINDER: 'REMAINDER';
 SENTENCE: 'SENTENCE';
@@ -55,6 +60,7 @@ THEN: 'THEN';
 THROUGH: 'THROUGH';
 TIMES: 'TIMES';
 TO: 'TO';
+TRUE: 'TRUE';
 UNTIL: 'UNTIL';
 USING: 'USING';
 VALUE: 'VALUE';
@@ -63,8 +69,8 @@ VARYING: 'VARYING';
 WHEN: 'WHEN';
 WHILE: 'WHILE';
 WITH: 'WITH';
-
-// Special tokens
+XOR: 'XOR';
+// --- END Keywords ----------------------------------------------------
 
 // A valid COBOL word cannot start or end with a dash or underscore and must have at least one letter
 COBOL_WORD: (DIGIT (DIGIT | DASH)*)? LETTER (DASH* ALPHANUMERIC)*;
@@ -74,10 +80,12 @@ REPRESENTATION: ([9AXZ](LPAR INT RPAR)?)+ // A valid representation string. S an
               | ([9AXZ](LPAR INT RPAR)?)*'V'([9AXZ](LPAR INT RPAR)?)*('S'([9AXZ](LPAR INT RPAR)?)*)?
               ;
 
+// Special tokens
+INDEX: LPAR INT RPAR;
 LEVEL: DIGIT DIGIT;
-INT: DIGIT+;
-LPAR: '(';
-RPAR: ')';
+fragment INT: DIGIT+;
+fragment LPAR: '(';
+fragment RPAR: ')';
 DOT: '.';
 
 // --- LITERALS ---
@@ -87,9 +95,24 @@ DOT: '.';
 NONNUMERIC: '\'' (SPECIAL | LETTER | DIGIT | QUOTE | (APOST APOST) | ' ')+ '\''
           | '"' (SPECIAL | LETTER | DIGIT | APOST | (QUOTE QUOTE) | ' ')+ '"';
 
-NUMERIC: SIGN? DIGIT+ (DOT DIGIT+)?;
+NUMERIC: S? INT (V INT)?;
 
-ID_DIV_WORD: ID_DIV_CHAR+; // Identification Division names and values, anything but a dot
+// Operators
+ARITHMETIC_OP: PLUS | MINUS | MULT | DIV | POW;
+PLUS: '+' ; // Must be a token instead of fragment, as it is also used in string_expression
+fragment MINUS: '-' ;
+fragment MULT: '*' ;
+fragment DIV: '/' ;
+fragment POW: '**' ;
+
+COMPARISON_OP: EQ | GT | LT | GE | LE;
+fragment EQ: '=';
+fragment GT: '>';
+fragment LT: '<';
+fragment GE: '>=';
+fragment LE: '<=';
+
+BOOLEAN_OP: OR | AND | XOR;
 
 // --- Character classes and sets ---
 fragment ALPHANUMERIC: LETTER | DIGIT;
@@ -102,8 +125,9 @@ fragment APOST: '\'';
 fragment QUOTE: '"';
 // All valid characters in COBOL.
 fragment CHARACTER: SPECIAL | LETTER | DIGIT | DOT | APOST | QUOTE | PAR | DASH;
-fragment ID_DIV_CHAR: SPECIAL | LETTER | DIGIT | APOST | QUOTE | PAR; // Anything except a DOT (.)
-fragment SIGN: [+-];
+fragment ID_DIV_CHAR: SPECIAL | LETTER | DIGIT | APOST | QUOTE | PAR | DASH | [ \t]; // Anything except a DOT (.) or space
+fragment V: [.,]; // Decimal separator
+fragment S: [+-]; // Sign
 fragment DIGIT: [0-9];
 fragment LOWERCASE: [a-z];
 fragment UPPERCASE: [A-Z];
