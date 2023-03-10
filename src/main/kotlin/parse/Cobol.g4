@@ -36,22 +36,22 @@ paragraph: NOINDENT procedure_name DOT sentence+;
 sentence: statement+ DOT;
 
 statement: ACCEPT identifier+                                                                                #acceptStat
-         | ADD add=atomic+ TO to=atomic giving_clause*                                                       #addStat
+         | ADD add+=atomic+ TO to=atomic giving_clause*                                                       #addStat
          | ALTER alter=procedure_name tpt to=procedure_name                                                  #alterStat
 //         | CALL (ID_DIV_WORD) using_clause? #callStat // This one was breaking the parser every time, probably not worth doing
          | DISPLAY display_clause+ wna?                                                                      #displayStat
-         | DIVIDE div=atomic INTO into+=atomic+ (giving_clause+ | giving_clause REMAINDER rem=identifier)?   #divideStat
+         | DIVIDE div+=atomic INTO into+=atomic+ (giving_clause+ | giving_clause REMAINDER rem=identifier)?   #divideStat
          | EVALUATE any_expression also_clause* when_block+ END                                              #evaluateStat
          | goto procedure_name                                                                               #gotoStat
          | IF boolean_expression THEN then+=statement+ (ELSE else+=statement+)? END?                         #ifStat
          | LOOP loop_statement* END                                                                          #loopStat
          | MOVE move_expression TO to+=identifier+                                                           #moveStat
-         | MULTIPLY mul=atomic BY by+=atomic+ giving_clause?                                                 #multiplyStat
+         | MULTIPLY mul+=atomic BY by+=atomic+ giving_clause?                                                 #multiplyStat
          | ns                                                                                                #nextStat
          | PERFORM procedure_name (THROUGH procedure_name)? (atomic TIMES)?                                  #performStat
          | SIGNAL signal_expression ON ERROR                                                                 #signalStat
          | STOP                                                                                              #stopStat
-         | SUBTRACT sub=atomic+ FROM (from=atomic+ | from=atomic giving_clause+)                             #subtractStat
+         | SUBTRACT sub+=atomic+ FROM (from+=atomic+ | from+=atomic giving_clause+)                             #subtractStat
          ;
 
 // Used in ADD, DIVIDE, MULTIPLY, SUBTRACT

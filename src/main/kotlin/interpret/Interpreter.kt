@@ -17,7 +17,7 @@ import parse.CompileException.Companion.addError
 import program.*
 
 
-class Interpreter(): CobolBaseListener() {
+class Interpreter() : CobolBaseListener() {
     val identification = emptyMap<String, String>().toMutableMap()
     val symbolTable = emptyMap<String, Value>().toMutableMap()
     val procedure = listOf(MutableParagraph("", emptyList<MutableSentence>().toMutableList())).toMutableList()
@@ -96,75 +96,103 @@ class Interpreter(): CobolBaseListener() {
     // --- Statements -------------------------------------------------------------------------------------------------
 
     override fun exitAddStat(ctx: CobolParser.AddStatContext) {
-        val valueLeft = when (ctx.atomic(0)) {
-            is NumericContext -> Value.Numeric((ctx.atomic() as NumericContext).NUMERIC().text)
-            is NonnumericContext -> Value.NonNumeric((ctx.atomic() as NonnumericContext).NONNUMERIC().text)
-            is IdentifierContext -> symbolTable[(ctx.atomic() as IdentifierContext).COBOL_WORD().text]
-            else -> TODO()
-        }
-        val valueRight = when (ctx.atomic(1)) {
-            is NumericContext -> Value.Numeric((ctx.atomic() as NumericContext).NUMERIC().text)
-            is NonnumericContext -> Value.NonNumeric((ctx.atomic() as NonnumericContext).NONNUMERIC().text)
-            is IdentifierContext -> symbolTable[(ctx.atomic() as IdentifierContext).COBOL_WORD().text]
-            else -> TODO()
-        }
-        if (ctx.GIVING().size > 0) {
-        
-        } else {
-            instructions.add { state ->
-                state.apply {
-                    ctx.atomic()?.forEach { it ->
-                        when (it) {
-                            is NumericContext -> {
-                                val targets = ctx.atomic().map { ctx.atomic(1).text }
-                                targets.forEach {
-                                    variables[it] =
-                                        Value.Numeric(
-                                            valueLeft.toString().toDouble() + valueRight.toString().toDouble()
-                                        )
-                                }
-                            }
-                            is NonnumericContext -> TODO()
-                            is IdentifierContext -> TODO()
+        var sumNonNumericLeft = ""
+        var sumNumericLeft = 0.0
+        var leftValue: Value?
+        if (ctx.giving_clause().size > 0) {
+            when (val atom = ctx.add) {
+                is LiteralAtomContext -> when (atom.literal()) {
+                    is NumericLitContext -> {
+                        atom.forEach {
+                            sumNumericLeft += it.text.toDouble()
                         }
                     }
+                    is NonnumericLitContext -> {
+                        atom.forEach {
+                            sumNonNumericLeft += it.text
+                        }
+                    }
+                    else -> TODO("This should not occur unless the grammar rule 'literalAtom' was changed")
+                }
+                is IdentifierAtomContext -> {
+                    leftValue = symbolTable[atom.identifier().text]
+                }
+                else -> {
+                    TODO("")
                 }
             }
+        } else {
+            val result = symbolTable[ctx.to.text]
+            when (val atom = ctx.add) {
+                is LiteralAtomContext -> if (result != null) {
+                    when (atom.literal()) {
+                        is NumericLitContext -> {
+                            atom.forEach {
+                                sumNumericLeft += it.text.toDouble()
+                                result.data+=sumNumericLeft
+                            }
+                        }
+                        is NonnumericLitContext -> {
+                            atom.forEach {
+                                sumNonNumericLeft += it.text
+                            }
+                            result.data+=sumNonNumericLeft
+                        }
+                        else -> TODO("This should not occur unless the grammar rule 'literalAtom' was changed")
+                    }
+                }
+                is IdentifierAtomContext -> {
+
+                    atom.forEach {
+                      // Still in progrress  leftValue.data
+                    }
+                    leftValue = symbolTable[atom.identifier().text]
+
+                }
+                else -> {
+                    TODO("")
+                }
+            }
+
         }
     }
 
     override fun exitDisplayStat(ctx: CobolParser.DisplayStatContext) {
         val wna = ctx.wna() != null
 
-        val toDisplay: List<(State) -> String> = ctx.display_clause().map { when (val atom = it.atomic()) {
-            is LiteralAtomContext -> when (atom.literal()) {
-                is NumericLitContext -> { _ -> atom.text }
-                is NonnumericLitContext -> { _ -> atom.text }
-                else -> TODO("This should not occur unless the grammar rule 'literalAtom' was changed")
+        val toDisplay: List<(State) -> String> = ctx.display_clause().map {
+            when (val atom = it.atomic()) {
+                is LiteralAtomContext -> when (atom.literal()) {
+                    is NumericLitContext -> { _ -> atom.text }
+                    is NonnumericLitContext -> { _ -> atom.text }
+                    else -> TODO("This should not occur unless the grammar rule 'literalAtom' was changed")
+                }
+                is IdentifierAtomContext -> { state -> state.data[it.atomic().text]!!.toString() }
+                else -> TODO("This should not occur unless the grammar rule 'atomic' was changed")
             }
-            is IdentifierAtomContext -> {state -> state.data[it.atomic().text]!!.toString() }
-            else -> TODO("This should not occur unless the grammar rule 'atomic' was changed")
-        }  }
+        }
 
-        addStatement { state -> state.apply {
-            val toPrint = toDisplay.map { it(state) } // toDisplay has functions, so invoke with the State
-            if (wna) {
-                toPrint.forEach { print(it) }
-            } else {
-                toPrint.forEach { println(it) }
+        addStatement { state ->
+            state.apply {
+                val toPrint = toDisplay.map { it(state) } // toDisplay has functions, so invoke with the State
+                if (wna) {
+                    toPrint.forEach { print(it) }
+                } else {
+                    toPrint.forEach { println(it) }
+                }
+                this.next()
             }
-            this.next()
-        } }
+        }
     }
 
     override fun exitMoveStat(ctx: CobolParser.MoveStatContext) {
         val value = when (val move = ctx.move_expression()) {
             is AtomicMoveContext -> {
                 when (val atom = move.atomic()) {
-                is LiteralAtomContext -> Value(atom.literal().text)
-                // Not entirely correct as it does not check what kind of identifier it is. Array access and qualification will break this
-                is IdentifierAtomContext -> symbolTable[atom.identifier().text]!!
-                else -> TODO("This should not occur unless the grammar rule 'atomicMove' was changed")
+                    is LiteralAtomContext -> Value(atom.literal().text)
+                    // Not entirely correct as it does not check what kind of identifier it is. Array access and qualification will break this
+                    is IdentifierAtomContext -> symbolTable[atom.identifier().text]!!
+                    else -> TODO("This should not occur unless the grammar rule 'atomicMove' was changed")
                 }
             }
             else -> TODO()
@@ -176,22 +204,28 @@ class Interpreter(): CobolBaseListener() {
                 else -> TODO("This should not occur unless the grammar rule 'identifier' was changed")
             }
         }
-        addStatement {state -> state.apply {
-            targets.forEach { target -> data[target] = value }
-            this.next()
-        } }
+        addStatement { state ->
+            state.apply {
+                targets.forEach { target -> data[target] = value }
+                this.next()
+            }
+        }
     }
 
     // --- Control Flow section ---------------------------------------------------------------------------------------
     override fun exitNextStat(ctx: CobolParser.NextStatContext?) {
-        addStatement {  state -> state.apply {
-            this.nextSentence()
-        } }
+        addStatement { state ->
+            state.apply {
+                this.nextSentence()
+            }
+        }
     }
 
     override fun exitStopStat(ctx: CobolParser.StopStatContext?) {
-        addStatement { state -> state.apply {
-            this.stop()
-        } }
+        addStatement { state ->
+            state.apply {
+                this.stop()
+            }
+        }
     }
 }

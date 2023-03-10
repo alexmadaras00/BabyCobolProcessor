@@ -51,11 +51,9 @@ fun main(args: Array<String>) {
     /**
     IDENTIFICATION DIVISION.
     PROGRAM-ID. ACCPTST.
-    ENVIRONMENT DIVISION.
     DATA DIVISION.
-    WORKING-STORAGE SECTION.
-    01 AGE                       PIC 9(3).
-    01 GENDER                    PIC X(1).
+    01 AGE                       PICTURE IS 9(3).
+    01 GENDER                    PICTURE IS X(1).
     PROCEDURE DIVISION.
     ACCEPT AGE.
     ACCEPT GENDER.

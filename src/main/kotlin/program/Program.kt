@@ -51,6 +51,7 @@ data class BabyCobol(
             val (par, sent, stat) = state.programCounter.peek()
             val instr = procedure[par].second[sent][stat]
             // instr is assumed to update the programCounter. To simply proceed, invoke state.next()
+            //It transforms the initial state into  the next one (??)
             state = instr(state)
         }
     }
