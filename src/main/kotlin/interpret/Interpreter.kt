@@ -12,6 +12,7 @@ import parse.CobolParser.LiteralAtomContext
 import parse.CobolParser.NonnumericLitContext
 import parse.CobolParser.NumericLitContext
 import parse.CobolParser.PrimitiveIdContext
+import parse.CobolParser.ProcedureSignalContext
 import parse.CompileException
 import parse.CompileException.Companion.addError
 import program.*
@@ -94,72 +95,74 @@ class Interpreter() : CobolBaseListener() {
     }
 
     // --- Statements -------------------------------------------------------------------------------------------------
+    override fun exitAcceptStat(ctx: CobolParser.AcceptStatContext?) {
+        val toAccept = ctx!!.identifier().map {
+            when (it) {
+                is PrimitiveIdContext -> it.COBOL_WORD().text
+                else -> TODO("This should not occur unless the grammar rule 'identifier' was changed")
+            }
+        }
+        addStatement { state ->
+            state.apply {
+                toAccept.forEach { target -> data[target] = Value(readLine().toString())
+                    TODO("Handling each case")}
+                this.next()
+            }
+        }
+
+        super.exitAcceptStat(ctx)
+    }
 
     override fun exitAddStat(ctx: CobolParser.AddStatContext) {
         var sumNonNumericLeft = ""
         var sumNumericLeft = 0.0
-        var leftValue: Value?
+        val source: Value?
+        when (val atom = ctx.add) {
+            is LiteralAtomContext -> when (atom.literal()) {
+                is NumericLitContext -> {
+                    atom.forEach {
+                        sumNumericLeft += it.text.toDouble()
+                    }
+                    source = Value(sumNumericLeft.toString())
+                }
+                is NonnumericLitContext -> {
+                    atom.forEach {
+                        sumNonNumericLeft += it.text
+                    }
+                    source = Value(sumNonNumericLeft)
+                }
+                else -> TODO("This should not occur unless the grammar rule 'literalAtom' was changed")
+            }
+            is IdentifierAtomContext -> {
+                source = symbolTable[atom.identifier().text]!!
+            }
+            else -> {
+                TODO()
+            }
+        }
         if (ctx.giving_clause().size > 0) {
-            when (val atom = ctx.add) {
-                is LiteralAtomContext -> when (atom.literal()) {
-                    is NumericLitContext -> {
-                        atom.forEach {
-                            sumNumericLeft += it.text.toDouble()
-                        }
-                    }
-                    is NonnumericLitContext -> {
-                        atom.forEach {
-                            sumNonNumericLeft += it.text
-                        }
-                    }
-                    else -> TODO("This should not occur unless the grammar rule 'literalAtom' was changed")
-                }
-                is IdentifierAtomContext -> {
-                    leftValue = symbolTable[atom.identifier().text]
-                }
-                else -> {
-                    TODO("")
+            val intermediateTarget = ctx.to.text
+            val finalAdd = source + Value(intermediateTarget)
+            val target = ctx.giving_clause()[1].identifier().text
+            addStatement { state ->
+                state.apply {
+                 //   data[target] += finalAdd.data
                 }
             }
         } else {
-            val result = symbolTable[ctx.to.text]
-            when (val atom = ctx.add) {
-                is LiteralAtomContext -> if (result != null) {
-                    when (atom.literal()) {
-                        is NumericLitContext -> {
-                            atom.forEach {
-                                sumNumericLeft += it.text.toDouble()
-                                result.data+=sumNumericLeft
-                            }
-                        }
-                        is NonnumericLitContext -> {
-                            atom.forEach {
-                                sumNonNumericLeft += it.text
-                            }
-                            result.data+=sumNonNumericLeft
-                        }
-                        else -> TODO("This should not occur unless the grammar rule 'literalAtom' was changed")
-                    }
-                }
-                is IdentifierAtomContext -> {
-
-                    atom.forEach {
-                      // Still in progrress  leftValue.data
-                    }
-                    leftValue = symbolTable[atom.identifier().text]
-
-                }
-                else -> {
-                    TODO("")
+            val target = ctx.to.text
+            addStatement { state ->
+                state.apply {
+                    // TO BE FIXED
+                    // data[target]+=source
+                    this.next()
                 }
             }
-
         }
     }
 
     override fun exitDisplayStat(ctx: CobolParser.DisplayStatContext) {
         val wna = ctx.wna() != null
-
         val toDisplay: List<(State) -> String> = ctx.display_clause().map {
             when (val atom = it.atomic()) {
                 is LiteralAtomContext -> when (atom.literal()) {
@@ -171,7 +174,6 @@ class Interpreter() : CobolBaseListener() {
                 else -> TODO("This should not occur unless the grammar rule 'atomic' was changed")
             }
         }
-
         addStatement { state ->
             state.apply {
                 val toPrint = toDisplay.map { it(state) } // toDisplay has functions, so invoke with the State
@@ -219,6 +221,24 @@ class Interpreter() : CobolBaseListener() {
                 this.nextSentence()
             }
         }
+    }
+
+    override fun exitSignalStat(ctx: CobolParser.SignalStatContext?) {
+        // -- Added only the basic exception case --
+        val toSignal = when(val expr = ctx?.signal_expression()){
+            is ProcedureSignalContext->{
+                symbolTable[expr.procedure_name().COBOL_WORD().text]!!
+            }
+            else -> {
+                TODO()
+            }
+        }
+        addStatement { state ->
+            state.apply {
+                throw Exception(toSignal.data)
+            }
+        }
+
     }
 
     override fun exitStopStat(ctx: CobolParser.StopStatContext?) {
