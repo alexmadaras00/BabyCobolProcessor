@@ -1,5 +1,8 @@
 package program
 
+import parse.CobolParser.LiteralAtomContext
+import parse.CobolParser.TrueBoolContext
+
 sealed interface BabyCobolObject
 
 /**
@@ -11,7 +14,7 @@ typealias Representation = String
  * Value class, used for data of different types.
  * All implementations should also have a constructor that accepts a string.
  */
-data class Value(var data: String?, val representation: Representation? = null): BabyCobolObject {
+data class Value(var data: String, val representation: Representation? = null): BabyCobolObject {
     /**
      * Returns a String representation of the value.
      * TODO implement formatting according to representation
@@ -27,7 +30,6 @@ data class Value(var data: String?, val representation: Representation? = null):
      * TODO implement this method
      */
     fun setValue(newData: String) {
-
     }
 
     /**
@@ -35,6 +37,12 @@ data class Value(var data: String?, val representation: Representation? = null):
      */
     fun isNumeric(): Boolean = representation?.none { it in "AX" } ?: false
 
+    /**
+     * Operator function for the addition two values
+     * TODO implement it
+     */
+    operator fun plus(value: Value) = if(value.isNumeric()) Value((data.toDouble()+value.data.toDouble()).toString()) else value.data+data
+    operator fun minus(value: Value) = Value((data.toDouble()-value.data.toDouble()).toString())
 }
 
 /**
