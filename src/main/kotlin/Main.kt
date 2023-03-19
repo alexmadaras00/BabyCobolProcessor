@@ -1,8 +1,10 @@
+import interpret.Checker
 import interpret.Interpreter
 import org.antlr.v4.runtime.CommonTokenStream
 import parse.CobolLexer
 import parse.CobolParser
 import parse.readFile
+import java.beans.Expression
 import java.util.*
 
 /**
@@ -21,33 +23,40 @@ fun interpretAndRun(fileName: String) {
     val program = Interpreter().interpret(tree)
     // And running it
     program.run()
+
 }
 
 fun main(args: Array<String>) {
-    println("Hello World!")
+    val programCode = readLine()
+    if (programCode != null) {
+        val result = interpretAndRun(programCode)
+        println(result)
+    }
 
-    // Try adding program arguments via Run/Debug configuration.
-    // Learn more about running applications: https://www.jetbrains.com/help/idea/running-applications.html.
-    println("Program arguments: ${args.joinToString()}")
-
-    // ACCEPT X
-    // var X = readLine(
-        val scanner = Scanner(System.`in`)
-        print("Enter age: ")
-        val age = scanner.nextInt()
-        print("Enter gender (M or F): ")
-        val gender = scanner.next()
-
-        when {
-            age > 60 && gender == "M" -> println("THE MAN IS RETIRED")
-            age > 60 && gender == "F" -> println("THE WOMAN IS RETIRED")
-            age <= 60 && gender == "M" -> println("THE MAN IS NOT RETIRED")
-            age <= 60 && gender == "F" -> println("THE WOMAN IS NOT RETIRED")
-            else -> {
-                println("INVALID INPUT")
-                println("AGE = $age and GENDER = $gender")
-            }
-        }
+//    println("Hello World!")
+//
+//    // Try adding program arguments via Run/Debug configuration.
+//    // Learn more about running applications: https://www.jetbrains.com/help/idea/running-applications.html.
+//    println("Program arguments: ${args.joinToString()}")
+//
+//    // ACCEPT X
+//    // var X = readLine(
+//        val scanner = Scanner(System.`in`)
+//        print("Enter age: ")
+//        val age = scanner.nextInt()
+//        print("Enter gender (M or F): ")
+//        val gender = scanner.next()
+//
+//        when {
+//            age > 60 && gender == "M" -> println("THE MAN IS RETIRED")
+//            age > 60 && gender == "F" -> println("THE WOMAN IS RETIRED")
+//            age <= 60 && gender == "M" -> println("THE MAN IS NOT RETIRED")
+//            age <= 60 && gender == "F" -> println("THE WOMAN IS NOT RETIRED")
+//            else -> {
+//                println("INVALID INPUT")
+//                println("AGE = $age and GENDER = $gender")
+//            }
+//        }
     /**
     IDENTIFICATION DIVISION.
     PROGRAM-ID. ACCPTST.

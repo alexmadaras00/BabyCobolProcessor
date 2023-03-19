@@ -14,14 +14,14 @@ typealias Representation = String
  * Value class, used for data of different types.
  * All implementations should also have a constructor that accepts a string.
  */
-data class Value(var data: String, val representation: Representation? = null): BabyCobolObject {
+data class Value(var data: String, val representation: Representation? = null) : BabyCobolObject {
     /**
      * Returns a String representation of the value.
      * TODO implement formatting according to representation
      */
+
     override fun toString(): String {
-        if (data == null) return "null"
-        return if (isNumeric()) data!! else "'$data'"
+        return if (isNumeric()) data else "'$data'"
     }
 
     /**
@@ -30,6 +30,7 @@ data class Value(var data: String, val representation: Representation? = null): 
      * TODO implement this method
      */
     fun setValue(newData: String) {
+        data = newData
     }
 
     /**
@@ -38,25 +39,43 @@ data class Value(var data: String, val representation: Representation? = null): 
     fun isNumeric(): Boolean = representation?.none { it in "AX" } ?: false
 
     /**
-     * Operator function for the addition two values
+     * Operator function for binary operations
      * TODO implement it
      */
-    operator fun plus(value: Value) = if(value.isNumeric()) Value((data.toDouble()+value.data.toDouble()).toString()) else value.data+data
-    operator fun minus(value: Value) = Value((data.toDouble()-value.data.toDouble()).toString())
+    operator fun plus(value: Value): Value {
+        return if (value.isNumeric()) Value((data.toDouble() + value.data.toDouble()).toString()) else Value(value.data + data)
+    }
+
+    operator fun minus(value: Value): Value {
+        return Value((data.toDouble() - value.data.toDouble()).toString())
+    }
+
+    operator fun times(value: Value): Value {
+        return Value((data.toDouble() * value.data.toDouble()).toString())
+    }
+
+    operator fun div(value: Value): Value {
+        return Value((data.toDouble() / value.data.toDouble()).toString())
+    }
+
 }
+
 
 /**
  * Occurs data type, a 1-indexed array.
  * Representation of all elements is assumed to match.
  * @param data an array of all its elements
  */
-data class Occurs(val data: Array<BabyCobolObject>): BabyCobolObject {
+
+data class Occurs(val data: Array<BabyCobolObject>) : BabyCobolObject {
     val size = data.size
 
     // Simulates 1-indexing by subtracting 1 from the index.
-    operator fun get(i: Int) = data[i-1]
+    operator fun get(i: Int) = data[i - 1]
 
-    operator fun set(i: Int, v: BabyCobolObject) { data[i-1] = v }
+    operator fun set(i: Int, v: BabyCobolObject) {
+        data[i - 1] = v
+    }
 
     val indices = IntRange(1, size)
     val lastIndex = size
@@ -81,5 +100,5 @@ data class Occurs(val data: Array<BabyCobolObject>): BabyCobolObject {
 /**
  * Composite object, containing named sub-objects.
  */
-data class Record(val components: Map<String, BabyCobolObject>):
+data class Record(val components: Map<String, BabyCobolObject>) :
     BabyCobolObject
